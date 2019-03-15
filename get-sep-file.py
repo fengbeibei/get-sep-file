@@ -1,3 +1,4 @@
+# _*_ coding: utf-8 _*_
 '''
 Created: 2019-03-09 22:32:21
 Author : Beibei
@@ -18,10 +19,11 @@ class GSF:
     def __init__(self, username, password, path, content):
         self.username = username
         self.password = password
-        self.path = path
+        self.path = os.path.abspath(path)
         self.content = content
         self.conn = requests.Session()
         self.course = {}
+        self.course_ = {}
         self.df = pd.DataFrame()
 
     def login(self):
@@ -57,10 +59,10 @@ class GSF:
             link = item.get('href')
             name = item.get('title')
             if link.startswith('http://course.ucas.ac.cn/portal/site/1'):
-                self.course[name] = link[-6:]
+                self.course[name[:-7]] = name[-2:]
+                self.course_[link[-6:]] = name[:-7]
         # 获取资源按钮链接
         sourceLink = soup.find('a', attrs={'title':'资源 - 上传、下载课件，发布文档，网址等信息'}).get('href')
-
         source_resp = self.conn.get(
             url = sourceLink,
             headers={'Host': 'course.ucas.ac.cn'},
@@ -85,34 +87,48 @@ class GSF:
         )
 
         # 打开所有一级文件夹
-        for value in self.course.values():
+        for key in self.course_.keys():
             open_dir_resp = self.conn.post(
                 url=sourceLink+'?panel=Main',
                 data={
-                    'collectionId': '/group/'+value+'/',
+                    'collectionId': '/group/'+key+'/',
                     'sakai_action': 'doExpand_collection',
                     'sakai_csrf_token': sakai_csrf_token
                 },
                 headers={'Host': 'course.ucas.ac.cn'}
             )
 
-        # 打开所有二级文件夹
-        soup = bs4.BeautifulSoup(open_dir_resp.text, 'lxml')
-        for item in soup.select('tr td input'):
-            pathID = item.get('value')
-            if pathID.endswith('/'):
-                open_dir2_resp = self.conn.post(
-                    url=sourceLink+'?panel=Main',
-                    data={
-                        'collectionId': pathID,
-                        'sakai_action': 'doExpand_collection',
-                        'sakai_csrf_token': sakai_csrf_token
-                    },
-                    headers={'Host': 'course.ucas.ac.cn'}
-                )
+        # 打开所有文件夹
+        pathset = set()
+        path = []
+        while True:
+            addset = set()
+            soup = bs4.BeautifulSoup(open_dir_resp.text, 'lxml')
+            for item in soup.select('tr td input'):
+                pathID = item.get('value')
+                if pathID.endswith('/') and pathID not in pathset:
+                    addset.add(pathID)
+            if addset:
+                pathset = pathset.union(addset)
+                for pathID in addset:
+                    open_dir_resp = self.conn.post(
+                        url=sourceLink+'?panel=Main',
+                        data={
+                            'collectionId': pathID,
+                            'sakai_action': 'doExpand_collection',
+                            'sakai_csrf_token': sakai_csrf_token
+                        },
+                        headers={'Host': 'course.ucas.ac.cn'}
+                    )
+            else:
+                for item in soup.select('tr td input'):
+                    pathID = item.get('value')
+                    if pathID.startswith('/group'):
+                        path.append(str(self.course_[pathID[7:13]]+pathID[13:]))
+                break
 
         # 获取所有文件下载链接
-        soup = bs4.BeautifulSoup(open_dir2_resp.text, 'lxml')
+        soup = bs4.BeautifulSoup(open_dir_resp.text, 'lxml')
         fileLinkTemp = []
         for item in soup.select('tr th a'):
             link = item.get('href')
@@ -125,45 +141,35 @@ class GSF:
         for table in tables:
             df_list.append(pd.concat(pd.read_html(table.prettify())))
         self.df = pd.concat(df_list)
-        self.df.drop(self.df.columns[[0,1,3,4,5]], axis=1, inplace=True)
-        self.df.drop([0,1,2,3],axis=0, inplace=True)
-        self.df.columns = ['file', 'author', 'time', 'size']
-        self.df.reset_index(drop=True, inplace=True)
+        self.df = self.df.loc[:, ['标题', '创建者', '最后修改时间', '大小']]
         self.df['link'] = 0
         self.df['path'] = 0
         self.df['tag'] = '春季'
+        self.df.dropna(inplace=True) 
         for index in self.df.index:
-            if str(self.df.iloc[index, 3]) == 'nan':
-                if '秋季' in self.df.iloc[index, 0]:
-                    self.df.iloc[index, 6] = '秋季'
-                    tag_temp = '秋季'
-                else:
-                    tag_temp = '春季'
-                self.df.iloc[index, 0] = self.df.iloc[index, 0][:-10]
-                self.df.iloc[index, 5] = os.path.join(self.path, self.df.iloc[index, 0])
-                path_temp = os.path.join(self.path, self.df.iloc[index, 0])
-            elif str(self.df.iloc[index, 3])[-1] == '项':
-                path_temp = os.path.join(path_temp, self.df.iloc[index, 0])
-                self.df.iloc[index, 5] = path_temp
-                self.df.iloc[index, 6] = tag_temp
+            if str(self.df.loc[index, '大小']).endswith('B'):
+                path_temp = path.pop(0)
+                self.df.loc[index, 'link'] = fileLink.pop(0)
+                self.df.loc[index, 'path'] = os.path.join(self.path, path_temp)
+            elif str(self.df.loc[index, '大小']).endswith('项'):
+                path_temp = path.pop(0)
+                self.df.loc[index, 'path'] = os.path.join(self.path, path_temp)
             else:
-                self.df.iloc[index, 4] = fileLink.pop(0)
-                self.df.iloc[index, 5] = os.path.join(path_temp, self.df.iloc[index, 0])
-                self.df.iloc[index, 6] = tag_temp
+                self.df.drop(index, axis=0, inplace=True)
+                continue
+            self.df.loc[index, 'tag'] = self.course[path_temp.strip().split('/')[0]]
         if str(self.content).lower != 'all': 
             self.df = self.df[self.df['tag']==self.content]
         self.df.reset_index(drop=True, inplace=True)
-        # print(self.df)
-
+        
     def saveFile(self):
         if os.path.exists(self.path):
-            for index in self.df.index:
+            for index in self.df.index[:5]:
                 if not os.path.exists(self.df.iloc[index, 5]):
-                    if str(self.df.iloc[index, 3]) == 'nan' or str(self.df.iloc[index, 3])[-1] == '项':
-                        print("新建文件夹：  "+self.df.iloc[index, 5])
-                        os.mkdir(self.df.iloc[index, 5])
-                        continue
-                    else:
+                    if str(self.df.iloc[index, 3])[-1] == 'B':
+                        if not os.path.exists(os.path.split(self.df.iloc[index, 5])[0]):
+                            os.makedirs(os.path.split(self.df.iloc[index, 5])[0])
+                            print("新建文件夹：  "+os.path.split(self.df.iloc[index, 5])[0])
                         print("开始下载新的文件：  "+self.df.iloc[index, 5]+"......\n")
                         download_resp = self.conn.get(
                             url=self.df.iloc[index, 4],
