@@ -18,7 +18,7 @@
 1. 本项目使用python3.6，使用前请安装相关packet：
 
     ```bash
-    pip install -r requirments.txt
+    $ pip install -r requirments.txt
     ```
 
 2. 配置config文件中的用户名、密码、存放路径和同步的内容（默认为春季课程）
@@ -26,7 +26,7 @@
 3. 请确保使用的是国科大的网络，并在终端中运行:
 
     ```bash 
-    python get-sep-file.py
+    $ python get-sep-file.py
     ```
 
 
