@@ -15,7 +15,7 @@
 
 ## Install
 
-1. 本项目使用python3，使用前请安装相关packet：
+1. 本项目使用python3.6，使用前请安装相关packet：
 
     ```bash
     pip install -r requirments.txt
@@ -26,7 +26,7 @@
 3. 请确保使用的是国科大的网络，并在终端中运行:
 
     ```bash 
-    get-sep-file.py
+    python get-sep-file.py
     ```
 
 
