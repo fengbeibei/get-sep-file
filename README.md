@@ -15,7 +15,7 @@
 
 ## Install
 
-1. 本项目使用python3.6，使用前请安装相关packet：
+1. 本项目使用python3，使用前请安装相关packet：
 
     ```bash
     $ pip install -r requirments.txt

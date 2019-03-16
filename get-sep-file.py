@@ -141,7 +141,16 @@ class GSF:
         for table in tables:
             df_list.append(pd.concat(pd.read_html(table.prettify())))
         self.df = pd.concat(df_list)
-        self.df = self.df.loc[:, ['标题', '创建者', '最后修改时间', '大小']]
+        if len(self.df.columns) == 12:
+            # python3.6
+            self.df = self.df.loc[:, ['标题', '创建者', '最后修改时间', '大小']]
+        elif len(self.df.columns) == 9:
+            # python3.7
+            self.df = self.df.loc[:, [2,6,7,8]]
+            self.df.columns = ['标题', '创建者', '最后修改时间', '大小']
+        else:
+            print("python版本可能不支持！")
+            os._exit()
         self.df['link'] = 0
         self.df['path'] = 0
         self.df['tag'] = '春季'
@@ -161,6 +170,7 @@ class GSF:
         if str(self.content).lower != 'all': 
             self.df = self.df[self.df['tag']==self.content]
         self.df.reset_index(drop=True, inplace=True)
+        print(self.df)
         
     def saveFile(self):
         if os.path.exists(self.path):
@@ -187,4 +197,4 @@ if __name__ == "__main__":
         config = json.load(f)
     gsf = GSF(config['username'], config['password'], config['path'], config['content'])
     gsf.login()
-    gsf.saveFile()
+#     gsf.saveFile()
