@@ -164,7 +164,7 @@ class GSF:
         
     def saveFile(self):
         if os.path.exists(self.path):
-            for index in self.df.index[:5]:
+            for index in self.df.index:
                 if not os.path.exists(self.df.iloc[index, 5]):
                     if str(self.df.iloc[index, 3])[-1] == 'B':
                         if not os.path.exists(os.path.split(self.df.iloc[index, 5])[0]):
