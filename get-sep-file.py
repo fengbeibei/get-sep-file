@@ -170,7 +170,7 @@ class GSF:
         if str(self.content).lower != 'all': 
             self.df = self.df[self.df['tag']==self.content]
         self.df.reset_index(drop=True, inplace=True)
-        print(self.df)
+        # print(self.df)
         
     def saveFile(self):
         if os.path.exists(self.path):
@@ -197,4 +197,4 @@ if __name__ == "__main__":
         config = json.load(f)
     gsf = GSF(config['username'], config['password'], config['path'], config['content'])
     gsf.login()
-#     gsf.saveFile()
+    gsf.saveFile()
