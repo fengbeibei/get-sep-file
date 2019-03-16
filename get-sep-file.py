@@ -189,6 +189,7 @@ class GSF:
                             for chunk in download_resp.iter_content(chunk_size=1024):
                                 f.write(chunk)
                         print("    "+self.df.iloc[index, 5]+"  下载完成!\n")
+            print("所有的文件已同步至最新！")
         else:
             print("路径不存在！")
 
