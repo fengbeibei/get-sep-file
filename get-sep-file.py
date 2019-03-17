@@ -36,7 +36,6 @@ class GSF:
         }
         post_url = 'http://sep.ucas.ac.cn/slogin'
         self.conn.post(post_url, data=params, headers={'Host': 'sep.ucas.ac.cn'})
-        print('登录成功！\n')
 
         # 获取课程网站重定向链接
         coursePanel_resp = self.conn.get(
@@ -44,8 +43,13 @@ class GSF:
             headers={'Host': 'sep.ucas.ac.cn'},
             verify=False
         )       
-        soup = bs4.BeautifulSoup(coursePanel_resp.text, 'lxml')
-        coursePanelLink = soup.select('div h4 a')[0].get('href')
+        try:
+            soup = bs4.BeautifulSoup(coursePanel_resp.text, 'lxml')
+            coursePanelLink = soup.select('div h4 a')[0].get('href')
+            print("登录成功！ \n")
+        except:
+            print("登录失败！请使用UCAS登录~~\n")
+            exit()
         
         # 获取资源页面链接
         courseLinks_resp = self.conn.get(
@@ -150,7 +154,7 @@ class GSF:
             self.df.columns = ['标题', '创建者', '最后修改时间', '大小']
         else:
             print("python版本可能不支持！")
-            os._exit()
+            exit()
         self.df['link'] = 0
         self.df['path'] = 0
         self.df['tag'] = '春季'
