@@ -41,7 +41,6 @@ class GSF:
         verify_code = input("Please input the verify code:")
         print(verify_code)
         
-
         # post表单
         params = {
             'userName': self.username,
