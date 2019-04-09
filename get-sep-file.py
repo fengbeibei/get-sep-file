@@ -11,6 +11,7 @@ import bs4
 import pandas as pd
 import os
 import json
+from PIL import Image
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 pd.set_option('max_colwidth', 1000)
@@ -27,10 +28,25 @@ class GSF:
         self.df = pd.DataFrame()
 
     def login(self):
+        verify = self.conn.get(
+            url = 'http://sep.ucas.ac.cn/changePic',
+            headers={'Host': 'sep.ucas.ac.cn'},
+            verify=False
+        )
+        with open('verify.jpg', 'wb') as fd:
+            for chunk in verify.iter_content(chunk_size=1024):
+                fd.write(chunk)
+        img = Image.open('verify.jpg')
+        img.show()
+        verify_code = input("Please input the verify code:")
+        print(verify_code)
+        
+
         # post表单
         params = {
             'userName': self.username,
             'pwd': self.password,
+            'certCode': verify_code,
             'sb': 'sb',
             'rememberMe': 1
         }
