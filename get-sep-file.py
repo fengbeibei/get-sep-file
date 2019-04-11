@@ -28,29 +28,52 @@ class GSF:
         self.df = pd.DataFrame()
 
     def login(self):
-        verify = self.conn.get(
-            url = 'http://sep.ucas.ac.cn/changePic',
+        temp_login = self.conn.post(
+            url='http://sep.ucas.ac.cn',
             headers={'Host': 'sep.ucas.ac.cn'},
             verify=False
         )
-        with open('verify.jpg', 'wb') as fd:
-            for chunk in verify.iter_content(chunk_size=1024):
-                fd.write(chunk)
-        img = Image.open('verify.jpg')
-        img.show()
-        verify_code = input("Please input the verify code:")
-        print(verify_code)
-        
-        # post表单
-        params = {
-            'userName': self.username,
-            'pwd': self.password,
-            'certCode': verify_code,
-            'sb': 'sb',
-            'rememberMe': 1
-        }
-        post_url = 'http://sep.ucas.ac.cn/slogin'
-        self.conn.post(post_url, data=params, headers={'Host': 'sep.ucas.ac.cn'})
+
+        soup = bs4.BeautifulSoup(temp_login.text, 'lxml')
+        verifyText = soup.select('div label')[-1].getText()
+        if verifyText == '验证码':
+            verify = self.conn.get(
+                url = 'http://sep.ucas.ac.cn/changePic',
+                headers={'Host': 'sep.ucas.ac.cn'},
+                verify=False
+            )
+            with open('verify.jpg', 'wb') as fd:
+                for chunk in verify.iter_content(chunk_size=1024):
+                    fd.write(chunk)
+            img = Image.open('verify.jpg')
+            img.show()
+            verify_code = input("Please input the verify code:")
+            print(verify_code)
+            # post表单
+            test = self.conn.post(
+                url = 'http://sep.ucas.ac.cn/slogin', 
+                data={
+                    'userName': self.username,
+                    'pwd': self.password,
+                    'certCode': verify_code,
+                    'sb': 'sb',
+                    'rememberMe': 1
+                },
+                headers={'Host': 'sep.ucas.ac.cn'}
+            )
+        else:
+            print("校园网好啊，不用花流量啊，也不用输验证码呀~")
+            # post表单
+            self.conn.post(
+                url = 'http://sep.ucas.ac.cn/slogin', 
+                data={
+                    'userName': self.username,
+                    'pwd': self.password,
+                    'sb': 'sb',
+                    'rememberMe': 1
+                },
+                headers={'Host': 'sep.ucas.ac.cn'}
+            )
 
         # 获取课程网站重定向链接
         coursePanel_resp = self.conn.get(
@@ -58,13 +81,10 @@ class GSF:
             headers={'Host': 'sep.ucas.ac.cn'},
             verify=False
         )       
-        try:
-            soup = bs4.BeautifulSoup(coursePanel_resp.text, 'lxml')
-            coursePanelLink = soup.select('div h4 a')[0].get('href')
-            print("登录成功！ \n")
-        except:
-            print("登录失败！请使用UCAS登录~~\n")
-            exit()
+
+        soup = bs4.BeautifulSoup(coursePanel_resp.text, 'lxml')
+        coursePanelLink = soup.select('div h4 a')[0].get('href')
+        print("登录成功！ \n")
         
         # 获取资源页面链接
         courseLinks_resp = self.conn.get(
@@ -104,7 +124,7 @@ class GSF:
             },
             headers={'Host': 'course.ucas.ac.cn'}
         )
-
+        print('please wait...')
         # 打开所有一级文件夹
         for key in self.course_.keys():
             open_dir_resp = self.conn.post(
