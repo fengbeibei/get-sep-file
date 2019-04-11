@@ -81,10 +81,13 @@ class GSF:
             headers={'Host': 'sep.ucas.ac.cn'},
             verify=False
         )       
-
-        soup = bs4.BeautifulSoup(coursePanel_resp.text, 'lxml')
-        coursePanelLink = soup.select('div h4 a')[0].get('href')
-        print("登录成功！ \n")
+        try:
+            soup = bs4.BeautifulSoup(coursePanel_resp.text, 'lxml')
+            coursePanelLink = soup.select('div h4 a')[0].get('href')
+            print("登录成功！ \n")
+        except:
+            print("验证码有误，请重试~")
+            exit()
         
         # 获取资源页面链接
         courseLinks_resp = self.conn.get(
