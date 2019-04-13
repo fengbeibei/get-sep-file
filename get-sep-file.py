@@ -127,7 +127,7 @@ class GSF:
             },
             headers={'Host': 'course.ucas.ac.cn'}
         )
-        print('please wait...')
+        print('Please wait...downloading...')
         # 打开所有一级文件夹
         for key in self.course_.keys():
             open_dir_resp = self.conn.post(
