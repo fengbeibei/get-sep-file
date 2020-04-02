@@ -1,4 +1,4 @@
 pandas==0.24.1
 requests==2.21.0
-Pillow==6.2.0
+Pillow>=6.2.2
 beautifulsoup4==4.7.1
