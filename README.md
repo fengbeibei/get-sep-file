@@ -3,7 +3,7 @@
 
 ## Config
 
-`username`：国科大邮箱
+`username`：课程网站用户名
 
 `password`: 课程网站登录密码
 
@@ -28,8 +28,5 @@
     ```bash 
     $ python get-sep-file.py
     ```
-
-
-
 
 

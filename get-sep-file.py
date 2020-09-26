@@ -12,10 +12,13 @@ import pandas as pd
 import os
 import json
 from PIL import Image
+import time
+import sys
+
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 pd.set_option('max_colwidth', 1000)
-
+requests.packages.urllib3.disable_warnings()
 class GSF:
     def __init__(self, username, password, path, content):
         self.username = username
@@ -47,7 +50,7 @@ class GSF:
                     fd.write(chunk)
             img = Image.open('verify.jpg')
             img.show()
-            verify_code = input("Please input the verify code:")
+            verify_code = input("验证码:")
             print(verify_code)
             # post表单
             test = self.conn.post(
@@ -100,7 +103,7 @@ class GSF:
         for item in soup.select('ul div a'):
             link = item.get('href')
             name = item.get('title')
-            if link.startswith('http://course.ucas.ac.cn/portal/site/1'):
+            if link.startswith('https://course.ucas.ac.cn/portal/site/1'):
                 self.course[name[:-7]] = name[-2:]
                 self.course_[link[-6:]] = name[:-7]
         # 获取资源按钮链接
@@ -127,7 +130,7 @@ class GSF:
             },
             headers={'Host': 'course.ucas.ac.cn'}
         )
-        print('Please wait...downloading...')
+        print('开始下载...')
         # 打开所有一级文件夹
         for key in self.course_.keys():
             open_dir_resp = self.conn.post(
@@ -174,7 +177,7 @@ class GSF:
         fileLinkTemp = []
         for item in soup.select('tr th a'):
             link = item.get('href')
-            if link.startswith('http://course.ucas.ac.cn/access/content/group'):
+            if link.startswith('https://course.ucas.ac.cn/access/content/group'):
                 fileLinkTemp.append(link)
         fileLink = fileLinkTemp[::2]
 
@@ -183,6 +186,7 @@ class GSF:
         for table in tables:
             df_list.append(pd.concat(pd.read_html(table.prettify())))
         self.df = pd.concat(df_list)
+        # print(self.df.index)
         if len(self.df.columns) == 12:
             # python3.6
             self.df = self.df.loc[:, ['标题', '创建者', '最后修改时间', '大小']]
@@ -195,8 +199,9 @@ class GSF:
             exit()
         self.df['link'] = 0
         self.df['path'] = 0
-        self.df['tag'] = '春季'
+        self.df['tag'] = '秋季'
         self.df.dropna(inplace=True) 
+
         for index in self.df.index:
             if str(self.df.loc[index, '大小']).endswith('B'):
                 path_temp = path.pop(0)
@@ -209,20 +214,28 @@ class GSF:
                 self.df.drop(index, axis=0, inplace=True)
                 continue
             self.df.loc[index, 'tag'] = self.course[path_temp.strip().split('/')[0]]
-        if str(self.content).lower != 'all': 
+        # print(self.df.index,str(self.content).lower())
+        if str(self.content).lower() != 'all': 
             self.df = self.df[self.df['tag']==self.content]
+
         self.df.reset_index(drop=True, inplace=True)
-        # print(self.df)
         
     def saveFile(self):
         if os.path.exists(self.path):
+            cur_course = ''
             for index in self.df.index:
+                temp = self.df.iloc[index, 5][len(self.path) + 1:].split('/')[0]
+                if temp != cur_course:
+                    print(temp + ':')
+                    cur_course = temp
+                cur_file = self.df.iloc[index, 5][len(self.path) + 1 + len(cur_course) + 1:]
                 if not os.path.exists(self.df.iloc[index, 5]):
                     if str(self.df.iloc[index, 3])[-1] == 'B':
                         if not os.path.exists(os.path.split(self.df.iloc[index, 5])[0]):
                             os.makedirs(os.path.split(self.df.iloc[index, 5])[0])
-                            print("新建文件夹：  "+os.path.split(self.df.iloc[index, 5])[0])
-                        print("开始下载新的文件：  "+self.df.iloc[index, 5]+"......\n")
+                            print("\t新建文件夹：  "+os.path.split(self.df.iloc[index, 5])[0])
+                        print("\t下载新文件\t "+cur_file,end='')
+                        sys.stdout.flush()
                         download_resp = self.conn.get(
                             url=self.df.iloc[index, 4],
                             verify=False
@@ -230,13 +243,16 @@ class GSF:
                         with open(self.df.iloc[index, 5], 'wb') as f:
                             for chunk in download_resp.iter_content(chunk_size=1024):
                                 f.write(chunk)
-                        print("    "+self.df.iloc[index, 5]+"  下载完成!\n")
+                        print("\t下载完成")
+                else:
+                    print('\t文件已存在\t',cur_file)
+                time.sleep(0.1)
             print("所有的文件已同步至最新！")
         else:
             print("路径不存在！")
 
 if __name__ == "__main__":
-    with open('config.json') as f:
+    with open('config.json',encoding='utf-8') as f:
         config = json.load(f)
     gsf = GSF(config['username'], config['password'], config['path'], config['content'])
     gsf.login()
